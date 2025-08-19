@@ -14,14 +14,11 @@ import { BinanceModule } from './features/binance/binance.module';
 import { ConfigurationsModule } from './features/configurations/configurations.module';
 import { CryptosModule } from './features/cryptos/cryptos.module';
 import { ErrorLogsModule } from './features/error-logs/error-logs.module';
-import { EvaluationsModule } from './features/evaluations/evaluations.module';
 import { FeesModule } from './features/fees/fees.module';
 import { OrdersModule } from './features/orders/orders.module';
-import { PricesModule } from './features/prices/prices.module';
 import { StatisticsModule } from './features/statistics/statistics.module';
 import { TransactionsModule } from './features/transactions/transactions.module';
 import { VaultsModule } from './features/vaults/vaults.module';
-import { WalletsModule } from './features/wallets/wallets.module';
 
 @Module({
   imports: [
@@ -37,10 +34,7 @@ import { WalletsModule } from './features/wallets/wallets.module';
       },
     }),
     HttpModule,
-    PricesModule,
     TransactionsModule,
-    WalletsModule,
-    EvaluationsModule,
     VaultsModule,
     BinanceModule,
     AuthModule,

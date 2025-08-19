@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RedisModule } from 'src/cache/redis.module';
-import { PricesModule } from '../prices/prices.module';
 import { CryptosWebSocketService } from './cryptos-websocket.service';
 import { CryptosController } from './cryptos.controller';
 import { CryptosService } from './cryptos.service';
@@ -18,8 +17,6 @@ import { SharedMarketDataService } from './shared-market-data.service';
       TradingPairEntity,
       MarketDataEntity,
     ]),
-    PricesModule,
-    RedisModule,
     RedisModule,
   ],
   controllers: [CryptosController],

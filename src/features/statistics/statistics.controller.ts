@@ -10,8 +10,4 @@ export class StatisticsController {
   async getResults(@Query('page') page: number) {
     return this.statisticsService.getResults(page);
   }
-  @Get('wallets')
-  async getWalletsStats() {
-    return this.statisticsService.getWalletsStats();
-  }
 }

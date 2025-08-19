@@ -1,7 +1,6 @@
+import { TradingPairEntity } from 'src/features/cryptos/entities/trading-pair.entity';
 import { OrderEntity } from 'src/features/orders/entities/order.entity';
-import { CryptocurrencyEntity } from 'src/features/prices/entities/cryptocurrency.entity';
 import { VaultMovementEntity } from 'src/features/vaults/entities/vault-movement.entity';
-import { WalletEntity } from 'src/features/wallets/entities/wallet.entity';
 import {
   Column,
   CreateDateColumn,
@@ -47,14 +46,11 @@ export class TransactionEntity {
   @Column({ name: 'status', type: String, nullable: false })
   status: string; // Status of the transaction (e.g., 'FILLED', 'PARTIALLY_FILLED', 'CANCELED')
 
-  @Column({ name: 'cryptocurrency_id', type: 'int', nullable: true })
-  cryptocurrencyId: number;
+  @Column({ name: 'trading_pair_id', type: 'int', nullable: true })
+  tradingPairId: number;
 
   @Column({ name: 'transaction_type_id', type: 'int', nullable: false })
   transactionTypeId: number;
-
-  @Column({ name: 'wallet_id', type: 'int', nullable: true })
-  walletId: number;
 
   @Column({ name: 'result', type: String, nullable: true })
   result: string; // Result of the transaction, if applicable (e.g., 'PROFIT', 'LOSS', 'BREAK_EVEN')
@@ -63,12 +59,9 @@ export class TransactionEntity {
   profit: number;
 
   // Relations
-  @ManyToOne(
-    () => CryptocurrencyEntity,
-    (cryptocurrency) => cryptocurrency.evaluations,
-  )
-  @JoinColumn({ name: 'cryptocurrency_id' })
-  cryptocurrency: CryptocurrencyEntity;
+  @ManyToOne(() => TradingPairEntity, (tradingPair) => tradingPair.transactions)
+  @JoinColumn({ name: 'trading_pair_id' })
+  tradingPair: TradingPairEntity;
 
   @ManyToOne(
     () => TransactionTypeEntity,
@@ -76,10 +69,6 @@ export class TransactionEntity {
   )
   @JoinColumn({ name: 'transaction_type_id' })
   transactionType: TransactionTypeEntity;
-
-  @ManyToOne(() => WalletEntity, (wallet) => wallet.transactions)
-  @JoinColumn({ name: 'wallet_id' })
-  wallet: WalletEntity;
 
   @OneToMany(() => OrderEntity, (order) => order.transaction)
   orders: OrderEntity[];

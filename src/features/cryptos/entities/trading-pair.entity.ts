@@ -1,3 +1,4 @@
+import { TransactionEntity } from 'src/features/transactions/entities/transaction.entity';
 import {
   Column,
   CreateDateColumn,
@@ -54,4 +55,7 @@ export class TradingPairEntity {
 
   @OneToMany(() => MarketDataEntity, (marketData) => marketData.tradingPair)
   marketData: MarketDataEntity[];
+
+  @OneToMany(() => TransactionEntity, (transaction) => transaction.tradingPair)
+  transactions: TransactionEntity[];
 }
