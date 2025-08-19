@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CryptosService } from '../cryptos/cryptos.service';
+import { CreateMarketDataDto } from '../cryptos/dtos/create-market-data.dto';
 import { CreateArbitrageOpportunityDto } from './dtos/create-arbitrage-opportunity.dto';
 import { ArbitrageOpportunityEntity } from './entities/arbitrage-opportunity.entity';
 // Interface for cuadrangular (quadrangular) arbitrage path
@@ -288,21 +289,24 @@ export class ArbitrageOpportunitiesService {
   /**
    * Checks a single cuadrangular opportunity for profitability and logs the result.
    */
-  async checkCuadrangularOpportunity(path: CuadrangularPath): Promise<boolean> {
+  async checkCuadrangularOpportunity(
+    path: CuadrangularPath,
+    prices: CreateMarketDataDto[],
+  ): Promise<boolean> {
     const [pairId1, pairId2, pairId3] = path.tradingPairIds;
-    const prices1 = await this.cryptoService.getPricesByTradingPair(pairId1);
+    const prices1 = prices.find((price) => price.tradingPairId === pairId1);
     if (!prices1) {
       this.logger.log('No prices found for first trading pair');
       return false;
     }
     const askPrice1 = Number(prices1.askPrice);
-    const prices2 = await this.cryptoService.getPricesByTradingPair(pairId2);
+    const prices2 = prices.find((price) => price.tradingPairId === pairId2);
     if (!prices2) {
       this.logger.log('No prices found for second trading pair');
       return false;
     }
     const askPrice2 = Number(prices2.askPrice);
-    const prices3 = await this.cryptoService.getPricesByTradingPair(pairId3);
+    const prices3 = prices.find((price) => price.tradingPairId === pairId3);
     if (!prices3) {
       this.logger.log('No prices found for third trading pair');
       return false;
@@ -323,18 +327,7 @@ export class ArbitrageOpportunitiesService {
         path.coin2,
         path.endStable,
       );
-    // Write result to file instead of logging
-    const resultLine = JSON.stringify({
-      path,
-      askPrice1,
-      askPrice2,
-      bidPrice3,
-      profitPercent,
-      isProfitable,
-      minProfitPercent: this.minProfitPercentage,
-      profitable: isProfitable && profitPercent >= this.minProfitPercentage,
-      timestamp: new Date().toISOString(),
-    });
+
     if (isProfitable && profitPercent >= this.minProfitPercentage) {
       const newOpportunity: CreateArbitrageOpportunityDto = {
         profitPercentage: profitPercent,
@@ -355,7 +348,7 @@ export class ArbitrageOpportunitiesService {
   /**
    * Checks all cuadrangular opportunities for profitability.
    */
-  async checkCuadrangularOpportunities() {
+  async checkCuadrangularOpportunities(prices: CreateMarketDataDto[]) {
     const tradingPairs = await this.cryptoService.getAllTradingPairs();
     const tradingPairsStr = tradingPairs.map((pair) => ({
       pairSymbol: pair.pairSymbol,
@@ -366,7 +359,7 @@ export class ArbitrageOpportunitiesService {
     const paths = this.getCuadrangularPaths(tradingPairsStr, stablecoinStr);
 
     for (const path of paths) {
-      await this.checkCuadrangularOpportunity(path);
+      await this.checkCuadrangularOpportunity(path, prices);
     }
   }
   // Helper interface for triangular path

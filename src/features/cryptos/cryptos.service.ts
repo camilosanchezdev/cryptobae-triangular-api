@@ -93,6 +93,12 @@ export class CryptosService {
     await this.marketDataRepository.save(marketData);
     return marketData;
   }
+
+  async createManyMarketData(bodies: CreateMarketDataDto[]) {
+    const marketData = this.marketDataRepository.create(bodies);
+    await this.marketDataRepository.save(marketData);
+    return marketData;
+  }
   async getAllTradingPairs(): Promise<TradingPairEntity[]> {
     // return this.tradingPairRepository.find({ where: { deleted: false } });
     const cacheKey = this.redisService.generateCacheKey(

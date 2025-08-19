@@ -67,28 +67,20 @@ export class MarketDataWebsocketService
         `Saving ${prices.length} cryptocurrency prices to database`,
       );
 
-      const savePromises = prices.map(async (priceData) => {
-        try {
-          return await this.cryptosService.createMarketData(priceData);
-        } catch (error) {
-          this.logger.error(
-            `Failed to save price for trading pair with ID ${priceData.tradingPairId}:`,
-            error,
-          );
-          return null;
-        }
-      });
-
-      const results = await Promise.allSettled(savePromises);
-      const successful = results.filter(
-        (result) => result.status === 'fulfilled' && result.value !== null,
-      ).length;
-
-      this.logger.log(
-        `Successfully saved ${successful}/${prices.length} cryptocurrency prices`,
-      );
+      try {
+        await this.cryptosService.createManyMarketData(prices);
+        this.logger.log(
+          `Successfully saved ${prices.length} cryptocurrency prices`,
+        );
+      } catch (error) {
+        this.logger.error('Failed to save prices:', error);
+      }
+      this.logger.log('Checking for arbitrage opportunities...');
       // Check opportunities
-      await this.arbitrageOpportunitiesService.checkCuadrangularOpportunities();
+      await this.arbitrageOpportunitiesService.checkCuadrangularOpportunities(
+        prices,
+      );
+      this.logger.log('Finished checking for arbitrage opportunities');
     } catch (error) {
       this.logger.error('Error during periodic price save:', error);
     }
