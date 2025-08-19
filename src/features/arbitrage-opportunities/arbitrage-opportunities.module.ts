@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CryptosModule } from '../cryptos/cryptos.module';
 import { CryptoEntity } from '../cryptos/entities/crypto.entity';
@@ -16,7 +16,7 @@ import { ArbitrageOpportunityEntity } from './entities/arbitrage-opportunity.ent
       TradingPairEntity,
       MarketDataEntity,
     ]),
-    CryptosModule,
+    forwardRef(() => CryptosModule),
   ],
   controllers: [ArbitrageOpportunitiesController],
   providers: [ArbitrageOpportunitiesService],

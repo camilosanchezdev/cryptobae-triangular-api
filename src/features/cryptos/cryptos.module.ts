@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { RedisModule } from 'src/cache/redis.module';
+import { ArbitrageOpportunitiesModule } from '../arbitrage-opportunities/arbitrage-opportunities.module';
 import { CryptosWebSocketService } from './cryptos-websocket.service';
 import { CryptosController } from './cryptos.controller';
 import { CryptosService } from './cryptos.service';
@@ -18,6 +19,7 @@ import { SharedMarketDataService } from './shared-market-data.service';
       MarketDataEntity,
     ]),
     RedisModule,
+    forwardRef(() => ArbitrageOpportunitiesModule),
   ],
   controllers: [CryptosController],
   providers: [

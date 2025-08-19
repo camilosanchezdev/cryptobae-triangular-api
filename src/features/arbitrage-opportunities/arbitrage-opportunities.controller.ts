@@ -12,4 +12,10 @@ export class ArbitrageOpportunitiesController {
   async checkOpportunities() {
     return this.arbitrageOpportunitiesService.checkOpportunities();
   }
+
+  @UseGuards(ApiKeyGuard)
+  @Get('check-cuadrangular')
+  async checkCuadrangularOpportunities() {
+    return this.arbitrageOpportunitiesService.checkCuadrangularOpportunities();
+  }
 }

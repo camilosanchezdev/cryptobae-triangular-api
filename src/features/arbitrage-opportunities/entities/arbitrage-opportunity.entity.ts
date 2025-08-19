@@ -1,4 +1,4 @@
-import { CryptoEntity } from 'src/features/cryptos/entities/crypto.entity';
+import { TradingPairEntity } from 'src/features/cryptos/entities/trading-pair.entity';
 import {
   Column,
   CreateDateColumn,
@@ -39,36 +39,36 @@ export class ArbitrageOpportunityEntity {
   @Column({ name: 'profit_percentage', type: 'decimal', nullable: false })
   profitPercentage: number;
 
-  // For triangular arbitrage: Start Stablecoin -> Mid Crypto -> End Crypto -> End Stablecoin
-  // cycleStartCrypto = Starting stablecoin (e.g., DAI)
-  // midCrypto = First intermediate crypto (e.g., ETH)
-  // secondMidCrypto = Second intermediate crypto (e.g., BTC)
-  // endCrypto = Final stablecoin (e.g., TUSD)
-  @Column({ name: 'cycle_start_crypto_id', type: 'int', nullable: false })
-  cycleStartCryptoId: number;
+  @Column({ name: 'ask_price_1', type: 'decimal', nullable: false })
+  askPrice1: number;
 
-  @ManyToOne(() => CryptoEntity)
-  @JoinColumn({ name: 'cycle_start_crypto_id' })
-  cycleStartCrypto: CryptoEntity;
+  @Column({ name: 'ask_price_2', type: 'decimal', nullable: false })
+  askPrice2: number;
 
-  @Column({ name: 'mid_crypto_id', type: 'int', nullable: false })
-  midCryptoId: number;
+  @Column({ name: 'bid_price', type: 'decimal', nullable: false })
+  bidPrice: number;
 
-  @ManyToOne(() => CryptoEntity)
-  @JoinColumn({ name: 'mid_crypto_id' })
-  midCrypto: CryptoEntity;
+  @Column({ name: 'min_profit_percent', type: 'decimal', nullable: false })
+  minProfitPercent: number;
 
-  @Column({ name: 'second_mid_crypto_id', type: 'int', nullable: false })
-  secondMidCryptoId: number;
+  @Column({ name: 'first_trading_pair_id', type: 'int', nullable: false })
+  firstTradingPairId: number;
 
-  @ManyToOne(() => CryptoEntity)
-  @JoinColumn({ name: 'second_mid_crypto_id' })
-  secondMidCrypto: CryptoEntity;
+  @ManyToOne(() => TradingPairEntity)
+  @JoinColumn({ name: 'first_trading_pair_id' })
+  firstTradingPair: TradingPairEntity;
 
-  @Column({ name: 'end_crypto_id', type: 'int', nullable: false })
-  endCryptoId: number;
+  @Column({ name: 'second_trading_pair_id', type: 'int', nullable: false })
+  secondTradingPairId: number;
 
-  @ManyToOne(() => CryptoEntity)
-  @JoinColumn({ name: 'end_crypto_id' })
-  endCrypto: CryptoEntity;
+  @ManyToOne(() => TradingPairEntity)
+  @JoinColumn({ name: 'second_trading_pair_id' })
+  secondTradingPair: TradingPairEntity;
+
+  @Column({ name: 'third_trading_pair_id', type: 'int', nullable: false })
+  thirdTradingPairId: number;
+
+  @ManyToOne(() => TradingPairEntity)
+  @JoinColumn({ name: 'third_trading_pair_id' })
+  thirdTradingPair: TradingPairEntity;
 }

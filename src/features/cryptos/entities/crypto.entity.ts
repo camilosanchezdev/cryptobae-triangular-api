@@ -1,4 +1,3 @@
-import { ArbitrageOpportunityEntity } from 'src/features/arbitrage-opportunities/entities/arbitrage-opportunity.entity';
 import {
   Column,
   CreateDateColumn,
@@ -48,28 +47,4 @@ export class CryptoEntity {
 
   @OneToMany(() => TradingPairEntity, (tradingPair) => tradingPair.quoteCrypto)
   quoteTradingPairs: TradingPairEntity[];
-
-  @OneToMany(
-    () => ArbitrageOpportunityEntity,
-    (opportunity) => opportunity.cycleStartCrypto,
-  )
-  cycleStartOpportunities: ArbitrageOpportunityEntity[];
-
-  @OneToMany(
-    () => ArbitrageOpportunityEntity,
-    (opportunity) => opportunity.midCrypto,
-  )
-  midOpportunities: ArbitrageOpportunityEntity[];
-
-  @OneToMany(
-    () => ArbitrageOpportunityEntity,
-    (opportunity) => opportunity.endCrypto,
-  )
-  endOpportunities: ArbitrageOpportunityEntity[];
-
-  @OneToMany(
-    () => ArbitrageOpportunityEntity,
-    (opportunity) => opportunity.secondMidCrypto,
-  )
-  secondMidOpportunities: ArbitrageOpportunityEntity[];
 }

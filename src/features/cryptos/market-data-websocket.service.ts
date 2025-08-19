@@ -4,6 +4,7 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
+import { ArbitrageOpportunitiesService } from '../arbitrage-opportunities/arbitrage-opportunities.service';
 import { CryptosService } from './cryptos.service';
 import { SharedMarketDataService } from './shared-market-data.service';
 
@@ -18,6 +19,7 @@ export class MarketDataWebsocketService
   constructor(
     private readonly sharedMarketDataService: SharedMarketDataService,
     private readonly cryptosService: CryptosService,
+    private readonly arbitrageOpportunitiesService: ArbitrageOpportunitiesService,
   ) {}
 
   onModuleInit() {
@@ -51,10 +53,7 @@ export class MarketDataWebsocketService
   }
   private async saveAllCurrentPrices(): Promise<void> {
     console.log('Saving all current prices to database...');
-    console.log(
-      'currentPrices:',
-      this.sharedMarketDataService.getCurrentPrices(),
-    );
+
     try {
       const prices = Array.from(
         this.sharedMarketDataService.getCurrentPrices().values(),
@@ -88,6 +87,8 @@ export class MarketDataWebsocketService
       this.logger.log(
         `Successfully saved ${successful}/${prices.length} cryptocurrency prices`,
       );
+      // Check opportunities
+      await this.arbitrageOpportunitiesService.checkCuadrangularOpportunities();
     } catch (error) {
       this.logger.error('Error during periodic price save:', error);
     }

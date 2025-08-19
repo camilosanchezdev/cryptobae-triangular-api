@@ -1,3 +1,4 @@
+import { ArbitrageOpportunityEntity } from 'src/features/arbitrage-opportunities/entities/arbitrage-opportunity.entity';
 import { TransactionEntity } from 'src/features/transactions/entities/transaction.entity';
 import {
   Column,
@@ -58,4 +59,22 @@ export class TradingPairEntity {
 
   @OneToMany(() => TransactionEntity, (transaction) => transaction.tradingPair)
   transactions: TransactionEntity[];
+
+  @OneToMany(
+    () => ArbitrageOpportunityEntity,
+    (arbitrageOpportunity) => arbitrageOpportunity.firstTradingPair,
+  )
+  firstArbitrageOpportunities: ArbitrageOpportunityEntity[];
+
+  @OneToMany(
+    () => ArbitrageOpportunityEntity,
+    (arbitrageOpportunity) => arbitrageOpportunity.secondTradingPair,
+  )
+  secondArbitrageOpportunities: ArbitrageOpportunityEntity[];
+
+  @OneToMany(
+    () => ArbitrageOpportunityEntity,
+    (arbitrageOpportunity) => arbitrageOpportunity.thirdTradingPair,
+  )
+  thirdArbitrageOpportunities: ArbitrageOpportunityEntity[];
 }

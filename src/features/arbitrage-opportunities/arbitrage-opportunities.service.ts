@@ -2,7 +2,22 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CryptosService } from '../cryptos/cryptos.service';
+import { CreateArbitrageOpportunityDto } from './dtos/create-arbitrage-opportunity.dto';
 import { ArbitrageOpportunityEntity } from './entities/arbitrage-opportunity.entity';
+// Interface for cuadrangular (quadrangular) arbitrage path
+interface CuadrangularPath {
+  startStable: string;
+  coin1: string;
+  coin2: string;
+  endStable: string;
+  path: [string, string, string]; // e.g. [USDT->BTC, BTC->ETH, ETH->USDC]
+  priceTypes: [
+    'ask' | 'bid', // for first pair
+    'ask' | 'bid', // for second pair
+    'ask' | 'bid', // for third pair
+  ];
+  tradingPairIds: [number, number, number];
+}
 interface TriangularPath {
   startStable: string;
   coin: string;
@@ -25,6 +40,11 @@ export class ArbitrageOpportunitiesService {
     private readonly repository: Repository<ArbitrageOpportunityEntity>,
     private readonly cryptoService: CryptosService,
   ) {}
+
+  async createArbitrageOpportunity(body: CreateArbitrageOpportunityDto) {
+    const opportunity = this.repository.create(body);
+    await this.repository.save(opportunity);
+  }
   /**
    * Checks if a triangular arbitrage is profitable.
    * @param startAmount Initial stablecoin amount (e.g., 1000 USDT)
@@ -127,6 +147,227 @@ export class ArbitrageOpportunitiesService {
     console.log('Triangular arbitrage result:', result);
 
     return 'Hola mundo';
+  }
+
+  /**
+   * Returns all possible stablecoin -> coin1 -> coin2 -> stablecoin cuadrangular arbitrage paths
+   * E.g. USDT->BTC->ETH->USDC
+   * @param tradingPairs Array of trading pairs, e.g. [ {pairSymbol: 'BTCUSDT', id: 1}, ... ]
+   * @param stablecoins Array of stablecoin symbols, e.g. [ 'USDT', 'USDC', 'BUSD' ]
+   * @returns Array of CuadrangularPath
+   */
+  getCuadrangularPaths(
+    tradingPairs: { pairSymbol: string; id: number }[],
+    stablecoins: string[],
+  ): CuadrangularPath[] {
+    const paths: CuadrangularPath[] = [];
+    const tradingPairsMap = new Map<string, number>();
+    for (const pair of tradingPairs) {
+      tradingPairsMap.set(pair.pairSymbol, pair.id);
+    }
+    const tradingPairsStr = tradingPairs.map((p) => p.pairSymbol);
+    const coins = this.getCoinsFromPairs(tradingPairsStr, stablecoins);
+    for (const startStable of stablecoins) {
+      for (const endStable of stablecoins) {
+        if (endStable === startStable) continue;
+        for (const coin1 of coins) {
+          if (stablecoins.includes(coin1)) continue;
+          for (const coin2 of coins) {
+            if (coin2 === coin1 || stablecoins.includes(coin2)) continue;
+            // Find the three pairs: startStable->coin1, coin1->coin2, coin2->endStable
+            const pair1 = this.findPair(tradingPairsStr, coin1, startStable);
+            const pair2 = this.findPair(tradingPairsStr, coin2, coin1);
+            const pair3 = this.findPair(tradingPairsStr, coin2, endStable);
+            if (pair1 && pair2 && pair3) {
+              const priceTypes: ['ask', 'ask', 'bid'] = ['ask', 'ask', 'bid'];
+              const tradingPairIds: [number, number, number] = [
+                tradingPairsMap.get(pair1) ?? 0,
+                tradingPairsMap.get(pair2) ?? 0,
+                tradingPairsMap.get(pair3) ?? 0,
+              ];
+              paths.push({
+                startStable,
+                coin1,
+                coin2,
+                endStable,
+                path: [pair1, pair2, pair3],
+                priceTypes,
+                tradingPairIds,
+              });
+            }
+          }
+        }
+      }
+    }
+    return paths;
+  }
+
+  /**
+   * Checks if a cuadrangular arbitrage is profitable.
+   * @param startAmount Initial stablecoin amount (e.g., 1000 USDT)
+   * @param askPrice1 Ask price for first buy (e.g., BTCUSDT)
+   * @param askPrice2 Ask price for second buy (e.g., ETHBTC)
+   * @param bidPrice3 Bid price for final sell (e.g., ETHUSDC)
+   * @param feeRate Total fee rate (e.g., 0.0015 for 0.15%)
+   * @returns { profit: number, profitPercent: number, isProfitable: boolean }
+   */
+  /**
+   * Handles direction for each pair: if the pair is BASEQUOTE, then:
+   *   - To buy BASE with QUOTE, use ask price: amount / askPrice
+   *   - To sell BASE for QUOTE, use bid price: amount * bidPrice
+   * If the pair is QUOTEBASE, reverse the operation.
+   * This function auto-detects direction for each step.
+   */
+  checkCuadrangularArbitrageProfit(
+    startAmount: number,
+    askPrice1: number,
+    askPrice2: number,
+    bidPrice3: number,
+    feeRate = 0.00075, // 0.075% per trade
+    path?: [string, string, string],
+    startStable?: string,
+    coin1?: string,
+    coin2?: string,
+    endStable?: string,
+  ) {
+    // Step 1: Buy coin1 with startStable
+    // If pair1 is coin1+startStable, then buy coin1 with startStable: amount / askPrice
+    // If pair1 is startStable+coin1, then buy coin1 with startStable: amount * askPrice
+    let coin1Amount: number;
+    if (path && startStable && coin1) {
+      if (path[0] === coin1 + startStable) {
+        coin1Amount = (startAmount / askPrice1) * (1 - feeRate);
+      } else if (path[0] === startStable + coin1) {
+        coin1Amount = startAmount * askPrice1 * (1 - feeRate);
+      } else {
+        throw new Error('Invalid pair1 direction');
+      }
+    } else {
+      coin1Amount = (startAmount / askPrice1) * (1 - feeRate);
+    }
+
+    // Step 2: Buy coin2 with coin1
+    // If pair2 is coin2+coin1, then buy coin2 with coin1: coin1Amount / askPrice2
+    // If pair2 is coin1+coin2, then buy coin2 with coin1: coin1Amount * askPrice2
+    let coin2Amount: number;
+    if (path && coin1 && coin2) {
+      if (path[1] === coin2 + coin1) {
+        coin2Amount = (coin1Amount / askPrice2) * (1 - feeRate);
+      } else if (path[1] === coin1 + coin2) {
+        coin2Amount = coin1Amount * askPrice2 * (1 - feeRate);
+      } else {
+        throw new Error('Invalid pair2 direction');
+      }
+    } else {
+      coin2Amount = (coin1Amount / askPrice2) * (1 - feeRate);
+    }
+
+    // Step 3: Sell coin2 for endStable
+    // If pair3 is coin2+endStable, then sell coin2 for endStable: coin2Amount * bidPrice3
+    // If pair3 is endStable+coin2, then sell coin2 for endStable: coin2Amount / bidPrice3
+    let finalStablecoin: number;
+    if (path && coin2 && endStable) {
+      if (path[2] === coin2 + endStable) {
+        finalStablecoin = coin2Amount * bidPrice3 * (1 - feeRate);
+      } else if (path[2] === endStable + coin2) {
+        finalStablecoin = (coin2Amount / bidPrice3) * (1 - feeRate);
+      } else {
+        throw new Error('Invalid pair3 direction');
+      }
+    } else {
+      finalStablecoin = coin2Amount * bidPrice3 * (1 - feeRate);
+    }
+
+    // Calculate profit
+    const profit = finalStablecoin - startAmount;
+    const profitPercent = (profit / startAmount) * 100;
+    const isProfitable = profit > 0;
+    return { profit, profitPercent, isProfitable };
+  }
+
+  /**
+   * Checks a single cuadrangular opportunity for profitability and logs the result.
+   */
+  async checkCuadrangularOpportunity(path: CuadrangularPath): Promise<boolean> {
+    const [pairId1, pairId2, pairId3] = path.tradingPairIds;
+    const prices1 = await this.cryptoService.getPricesByTradingPair(pairId1);
+    if (!prices1) {
+      this.logger.log('No prices found for first trading pair');
+      return false;
+    }
+    const askPrice1 = Number(prices1.askPrice);
+    const prices2 = await this.cryptoService.getPricesByTradingPair(pairId2);
+    if (!prices2) {
+      this.logger.log('No prices found for second trading pair');
+      return false;
+    }
+    const askPrice2 = Number(prices2.askPrice);
+    const prices3 = await this.cryptoService.getPricesByTradingPair(pairId3);
+    if (!prices3) {
+      this.logger.log('No prices found for third trading pair');
+      return false;
+    }
+    const bidPrice3 = Number(prices3.bidPrice);
+    // Use the profit check
+    const startAmount = 100; // Example amount
+    const { profitPercent, isProfitable } =
+      this.checkCuadrangularArbitrageProfit(
+        startAmount,
+        askPrice1,
+        askPrice2,
+        bidPrice3,
+        0.00075,
+        path.path,
+        path.startStable,
+        path.coin1,
+        path.coin2,
+        path.endStable,
+      );
+    // Write result to file instead of logging
+    const resultLine = JSON.stringify({
+      path,
+      askPrice1,
+      askPrice2,
+      bidPrice3,
+      profitPercent,
+      isProfitable,
+      minProfitPercent: this.minProfitPercentage,
+      profitable: isProfitable && profitPercent >= this.minProfitPercentage,
+      timestamp: new Date().toISOString(),
+    });
+    if (isProfitable && profitPercent >= this.minProfitPercentage) {
+      const newOpportunity: CreateArbitrageOpportunityDto = {
+        profitPercentage: profitPercent,
+        minProfitPercent: this.minProfitPercentage,
+        firstTradingPairId: path.tradingPairIds[0],
+        secondTradingPairId: path.tradingPairIds[1],
+        thirdTradingPairId: path.tradingPairIds[2],
+        askPrice1: askPrice1,
+        askPrice2: askPrice2,
+        bidPrice: bidPrice3,
+      };
+      await this.createArbitrageOpportunity(newOpportunity);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Checks all cuadrangular opportunities for profitability.
+   */
+  async checkCuadrangularOpportunities() {
+    const tradingPairs = await this.cryptoService.getAllTradingPairs();
+    const tradingPairsStr = tradingPairs.map((pair) => ({
+      pairSymbol: pair.pairSymbol,
+      id: pair.id,
+    }));
+    const stablecoins = await this.cryptoService.getStablecoins();
+    const stablecoinStr = stablecoins.map((coin) => coin.symbol);
+    const paths = this.getCuadrangularPaths(tradingPairsStr, stablecoinStr);
+
+    for (const path of paths) {
+      await this.checkCuadrangularOpportunity(path);
+    }
   }
   // Helper interface for triangular path
 
