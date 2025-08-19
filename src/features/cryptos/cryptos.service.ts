@@ -120,4 +120,40 @@ export class CryptosService {
 
     return tradingPairs;
   }
+  async getStablecoins(): Promise<CryptoEntity[]> {
+    const cacheKey = this.redisService.generateCacheKey(
+      'cryptos_getStablecoins',
+    );
+
+    // 1. Check Redis first
+    const cachedData = await this.redisService.get(cacheKey);
+    if (cachedData) {
+      return JSON.parse(cachedData) as CryptoEntity[];
+    }
+
+    // 2. If no cache, perform the database query
+    const cryptos = await this.repository.find({
+      where: { type: 'stablecoin' },
+    });
+
+    // 3. Cache the result in Redis with a Time-to-Live (TTL)
+    const ttlInSeconds = 60 * 60 * 24; // 24 hours (evaluation types rarely change)
+    await this.redisService.set(
+      cacheKey,
+      JSON.stringify(cryptos),
+      ttlInSeconds,
+    );
+
+    return cryptos;
+  }
+  async getPricesByTradingPair(
+    tradingPairId: number,
+  ): Promise<MarketDataEntity | null> {
+    const price = await this.marketDataRepository.findOne({
+      where: { tradingPairId },
+      order: { createdAt: 'DESC' },
+    });
+
+    return price;
+  }
 }

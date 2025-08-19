@@ -20,6 +20,7 @@ export class CryptosController {
   async getMarketData(@Query('page') page: number) {
     return this.cryptosService.getMarketData(page);
   }
+
   @UseGuards(ApiKeyGuard)
   @Get()
   async getCryptos(@Query('page') page: number) {
