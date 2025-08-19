@@ -1,0 +1,4 @@
+export enum ConfigurationsEnum {
+  MASTER_VAULT = 'MASTER_VAULT',
+  MASTER_VAULT_AVAILABLE = 'MASTER_VAULT_AVAILABLE',
+}
