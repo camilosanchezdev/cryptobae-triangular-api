@@ -13,14 +13,10 @@ export class CreateTransactionDto {
 
   @IsNumber()
   @IsOptional()
-  cryptocurrencyId?: number;
+  tradingPairId?: number;
 
   @IsNumber()
   transactionTypeId: number;
-
-  @IsNumber()
-  @IsOptional()
-  walletId?: number;
 
   @IsString()
   @IsOptional()

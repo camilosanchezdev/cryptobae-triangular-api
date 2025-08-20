@@ -315,14 +315,12 @@ export class ArbitrageOpportunitiesService {
           secondOrderPrice: opp.askPrice2,
           thirdOrderSymbol: opp.thirdOrderSymbol,
           thirdOrderPrice: opp.bidPrice,
+          firstTradingPairId: opp.firstTradingPairId,
+          secondTradingPairId: opp.secondTradingPairId,
+          thirdTradingPairId: opp.thirdTradingPairId,
         };
-        const tradingPairsSymbols: string[] = tradingPairsStr.map(
-          (el) => el.pairSymbol,
-        );
-        await this.arbitrageService.createArbitrage(
-          newArbitrage,
-          tradingPairsSymbols,
-        );
+
+        await this.arbitrageService.createArbitrage(newArbitrage);
       }
     }
   }

@@ -17,4 +17,10 @@ export class CreateArbitrageDto {
   thirdOrderSymbol: string;
   @IsNumber()
   thirdOrderPrice: number;
+  @IsNumber()
+  firstTradingPairId: number;
+  @IsNumber()
+  secondTradingPairId: number;
+  @IsNumber()
+  thirdTradingPairId: number;
 }

@@ -343,4 +343,46 @@ export class VaultsService {
       data,
     };
   }
+  async updateVaultCapital(
+    name: string,
+    amount: number,
+    transactionId: number,
+  ): Promise<MasterVaultEntity> {
+    return this.dataSource.transaction(async (manager) => {
+      // Use atomic update with increment
+      const result = await manager
+        .createQueryBuilder()
+        .update(MasterVaultEntity)
+        .set({
+          amount: () => `amount + ${amount}`,
+        })
+        .where('name = :name', { name })
+        .execute();
+
+      if (result.affected === 0) {
+        throw new Error('Master vault not found');
+      }
+
+      // Get the updated vault to get the old and new amounts for movement tracking
+      const masterVault = await manager.findOne(MasterVaultEntity, {
+        where: { name },
+      });
+
+      if (!masterVault) {
+        throw new Error('Master vault not found after update');
+      }
+
+      // Create vault movement with the calculated values
+      const oldAmount = Number(masterVault.amount) - amount;
+      await this.createVaultMovementWithManager(manager, {
+        masterVaultId: masterVault.id,
+        oldAmount,
+        transactionId,
+        amount: masterVault.amount,
+        difference: amount,
+      });
+
+      return masterVault;
+    });
+  }
 }

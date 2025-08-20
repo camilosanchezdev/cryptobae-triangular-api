@@ -5,6 +5,9 @@ import { CryptosModule } from '../cryptos/cryptos.module';
 import { CryptoEntity } from '../cryptos/entities/crypto.entity';
 import { MarketDataEntity } from '../cryptos/entities/market-data.entity';
 import { TradingPairEntity } from '../cryptos/entities/trading-pair.entity';
+import { FeesModule } from '../fees/fees.module';
+import { OrdersModule } from '../orders/orders.module';
+import { TransactionsModule } from '../transactions/transactions.module';
 import { VaultsModule } from '../vaults/vaults.module';
 import { ArbitrageOpportunitiesController } from './arbitrage-opportunities.controller';
 import { ArbitrageOpportunitiesService } from './arbitrage-opportunities.service';
@@ -22,6 +25,10 @@ import { ArbitrageOpportunityEntity } from './entities/arbitrage-opportunity.ent
     forwardRef(() => CryptosModule),
     BinanceModule,
     VaultsModule,
+    TransactionsModule,
+    VaultsModule,
+    OrdersModule,
+    FeesModule,
   ],
   controllers: [ArbitrageOpportunitiesController],
   providers: [ArbitrageOpportunitiesService, ArbitrageService],
