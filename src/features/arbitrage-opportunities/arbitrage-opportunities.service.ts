@@ -307,44 +307,46 @@ export class ArbitrageOpportunitiesService {
       this.checkHighestProfitOpportunityByStartStable(opportunities);
     this.logger.log(`Found ${result.length} opportunities`);
     const newOpportunities: CreateArbitrageOpportunityDto[] = [];
-    if (this.isProductionMode) {
-      const binanceOrderResponses: SaveOrdersRequest[] = [];
-      for (const opp of result) {
-        this.logger.log(`Opportunity ${JSON.stringify(opp)}`);
-        const newArbitrage: CreateArbitrageDto = {
-          finalAsset: opp.finalAsset,
-          startStable: opp.startStable,
-          firstOrderSymbol: opp.firstOrderSymbol,
-          firstOrderPrice: opp.askPrice1,
-          secondOrderSymbol: opp.secondOrderSymbol,
-          secondOrderPrice: opp.askPrice2,
-          thirdOrderSymbol: opp.thirdOrderSymbol,
-          thirdOrderPrice: opp.bidPrice,
-          firstTradingPairId: opp.firstTradingPairId,
-          secondTradingPairId: opp.secondTradingPairId,
-          thirdTradingPairId: opp.thirdTradingPairId,
-        };
-        this.logger.log(`Arbitrage ${JSON.stringify(newArbitrage)}`);
+
+    const binanceOrderResponses: SaveOrdersRequest[] = [];
+    for (const opp of result) {
+      this.logger.log(`Opportunity ${JSON.stringify(opp)}`);
+      const newArbitrage: CreateArbitrageDto = {
+        finalAsset: opp.finalAsset,
+        startStable: opp.startStable,
+        firstOrderSymbol: opp.firstOrderSymbol,
+        firstOrderPrice: opp.askPrice1,
+        secondOrderSymbol: opp.secondOrderSymbol,
+        secondOrderPrice: opp.askPrice2,
+        thirdOrderSymbol: opp.thirdOrderSymbol,
+        thirdOrderPrice: opp.bidPrice,
+        firstTradingPairId: opp.firstTradingPairId,
+        secondTradingPairId: opp.secondTradingPairId,
+        thirdTradingPairId: opp.thirdTradingPairId,
+      };
+      this.logger.log(`Arbitrage ${JSON.stringify(newArbitrage)}`);
+      let isExecuted = false;
+      if (this.isProductionMode) {
         const request =
           await this.arbitrageService.createArbitrage(newArbitrage);
-        let isExecuted = false;
+
         if (request) {
           binanceOrderResponses.push(request);
           isExecuted = true;
         }
-        const op: CreateArbitrageOpportunityDto = {
-          isExecuted,
-          profitPercentage: opp.profitPercentage,
-          askPrice1: opp.askPrice1,
-          askPrice2: opp.askPrice2,
-          bidPrice: opp.bidPrice,
-          minProfitPercent: opp.minProfitPercent,
-          firstTradingPairId: opp.firstTradingPairId,
-          secondTradingPairId: opp.secondTradingPairId,
-          thirdTradingPairId: opp.thirdTradingPairId,
-        };
-        newOpportunities.push(op);
       }
+      const op: CreateArbitrageOpportunityDto = {
+        isExecuted,
+        profitPercentage: opp.profitPercentage,
+        askPrice1: opp.askPrice1,
+        askPrice2: opp.askPrice2,
+        bidPrice: opp.bidPrice,
+        minProfitPercent: opp.minProfitPercent,
+        firstTradingPairId: opp.firstTradingPairId,
+        secondTradingPairId: opp.secondTradingPairId,
+        thirdTradingPairId: opp.thirdTradingPairId,
+      };
+      newOpportunities.push(op);
 
       await this.arbitrageService.saveOrders(binanceOrderResponses);
 
