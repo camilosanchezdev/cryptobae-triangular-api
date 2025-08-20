@@ -199,6 +199,7 @@ export class ArbitrageOpportunitiesService {
     // If pair3 is coin2+endStable, then sell coin2 for endStable: coin2Amount * bidPrice3
     // If pair3 is endStable+coin2, then sell coin2 for endStable: coin2Amount / bidPrice3
     let finalStablecoin: number;
+    const finalStablecoinMargin = 0.9976;
     if (path && coin2 && endStable) {
       if (path[2] === coin2 + endStable) {
         finalStablecoin = coin2Amount * bidPrice3 * (1 - feeRate);
@@ -212,7 +213,7 @@ export class ArbitrageOpportunitiesService {
     }
 
     // Calculate profit
-    const profit = finalStablecoin - startAmount;
+    const profit = finalStablecoin * finalStablecoinMargin - startAmount;
     const profitPercent = (profit / startAmount) * 100;
     const isProfitable = profit > 0;
     return { profit, profitPercent, isProfitable };
