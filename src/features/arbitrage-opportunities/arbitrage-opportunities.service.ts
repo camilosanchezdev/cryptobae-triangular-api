@@ -264,6 +264,7 @@ export class ArbitrageOpportunitiesService {
         bidPrice: bidPrice3,
       };
       await this.createArbitrageOpportunity(newOpportunity);
+      // TODO: trigger order execution
       return true;
     }
     return false;
