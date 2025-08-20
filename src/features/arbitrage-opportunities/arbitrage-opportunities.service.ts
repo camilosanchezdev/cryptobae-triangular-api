@@ -7,6 +7,7 @@ import { ArbitrageService } from './arbitrage.service';
 import { CreateArbitrageOpportunityDto } from './dtos/create-arbitrage-opportunity.dto';
 import { CreateArbitrageDto } from './dtos/create-arbitrage.dto';
 import { ArbitrageOpportunityEntity } from './entities/arbitrage-opportunity.entity';
+import { SaveOrdersRequest } from './interfaces/save-orders-request.interface';
 // Interface for cuadrangular (quadrangular) arbitrage path
 interface CuadrangularPath {
   startStable: string;
@@ -303,8 +304,8 @@ export class ArbitrageOpportunitiesService {
       this.checkHighestProfitOpportunityByStartStable(opportunities);
 
     await this.createArbitrageOpportunities(result);
-    // TODO: operate on the result
     if (this.isProductionMode) {
+      const binanceOrderResponses: SaveOrdersRequest[] = [];
       for (const opp of result) {
         const newArbitrage: CreateArbitrageDto = {
           finalAsset: opp.finalAsset,
@@ -320,8 +321,13 @@ export class ArbitrageOpportunitiesService {
           thirdTradingPairId: opp.thirdTradingPairId,
         };
 
-        await this.arbitrageService.createArbitrage(newArbitrage);
+        const request =
+          await this.arbitrageService.createArbitrage(newArbitrage);
+        if (request) {
+          binanceOrderResponses.push(request);
+        }
       }
+      await this.arbitrageService.saveOrders(binanceOrderResponses);
     }
   }
   checkHighestProfitOpportunityByStartStable(

@@ -14,6 +14,7 @@ import { TransactionTypeEnum } from '../transactions/enums/transaction-type.enum
 import { TransactionsService } from '../transactions/transactions.service';
 import { VaultsService } from '../vaults/vaults.service';
 import { CreateArbitrageDto } from './dtos/create-arbitrage.dto';
+import { SaveOrdersRequest } from './interfaces/save-orders-request.interface';
 
 @Injectable()
 export class ArbitrageService {
@@ -24,10 +25,12 @@ export class ArbitrageService {
     private readonly ordersService: OrdersService,
     private readonly feesService: FeesService,
   ) {}
-  async createArbitrage(body: CreateArbitrageDto) {
+  async createArbitrage(
+    body: CreateArbitrageDto,
+  ): Promise<SaveOrdersRequest | null> {
     const vault = await this.vaultsService.getVaultByName(body.startStable);
     if (vault.amount < 0) {
-      return;
+      return null;
     }
     const initialAmount = vault.amount;
     // Step 1: buy cryptocurrency 1
@@ -58,38 +61,14 @@ export class ArbitrageService {
     const thirdOrder =
       await this.binanceService.placeMarketSellOrder(marketSellOrder);
 
-    // TRANSACTIONS & ORDERS
-    // Order #1
-    const firstOperation = await this.createOrder(
-      firstOrder,
-      body.firstTradingPairId,
-    );
-    // Order #2
-    await this.createOrder(secondOrder, body.secondTradingPairId);
-    // Order #3
-    const lastOperation = await this.createOrder(
-      thirdOrder,
-      body.thirdTradingPairId,
-    );
-
-    // Update master vault capital
-    // Decrease initial vault
-    await this.updateVault(
-      firstOperation.finalAmountBuy,
-      firstOperation.finalPriceBuy,
-      firstOperation.transactionId,
-      body.startStable,
-      true,
-    );
-
-    // Increase final vault
-    await this.updateVault(
-      lastOperation.finalAmountBuy,
-      lastOperation.finalPriceBuy,
-      lastOperation.transactionId,
-      body.startStable,
-      false,
-    );
+    return {
+      orders: [firstOrder, secondOrder, thirdOrder],
+      firstTradingPairId: body.firstTradingPairId,
+      secondTradingPairId: body.secondTradingPairId,
+      thirdTradingPairId: body.thirdTradingPairId,
+      startStable: body.startStable,
+      finalAsset: body.finalAsset,
+    };
   }
   async updateVault(
     finalAmountBuy: number,
@@ -165,5 +144,44 @@ export class ArbitrageService {
     );
 
     return { finalAmountBuy, finalPriceBuy, transactionId: transaction.id };
+  }
+  async saveOrders(requests: SaveOrdersRequest[]) {
+    for (const request of requests) {
+      const firstOrder = request.orders[0];
+      const secondOrder = request.orders[1];
+      const thirdOrder = request.orders[2];
+      // TRANSACTIONS & ORDERS
+      // Order #1
+      const firstOperation = await this.createOrder(
+        firstOrder,
+        request.firstTradingPairId,
+      );
+      // Order #2
+      await this.createOrder(secondOrder, request.secondTradingPairId);
+      // Order #3
+      const lastOperation = await this.createOrder(
+        thirdOrder,
+        request.thirdTradingPairId,
+      );
+
+      // Update master vault capital
+      // Decrease initial vault
+      await this.updateVault(
+        firstOperation.finalAmountBuy,
+        firstOperation.finalPriceBuy,
+        firstOperation.transactionId,
+        request.startStable,
+        true,
+      );
+
+      // Increase final vault
+      await this.updateVault(
+        lastOperation.finalAmountBuy,
+        lastOperation.finalPriceBuy,
+        lastOperation.transactionId,
+        request.finalAsset,
+        false,
+      );
+    }
   }
 }
