@@ -272,6 +272,7 @@ export class ArbitrageOpportunitiesService {
         firstOrderSymbol: path.path[0],
         secondOrderSymbol: path.path[1],
         thirdOrderSymbol: path.path[2],
+        finalAsset: path.endStable,
       };
 
       return newOpportunity;
@@ -306,6 +307,7 @@ export class ArbitrageOpportunitiesService {
     if (this.isProductionMode) {
       for (const opp of result) {
         const newArbitrage: CreateArbitrageDto = {
+          finalAsset: opp.finalAsset,
           startStable: opp.startStable,
           firstOrderSymbol: opp.firstOrderSymbol,
           firstOrderPrice: opp.askPrice1,
@@ -314,7 +316,13 @@ export class ArbitrageOpportunitiesService {
           thirdOrderSymbol: opp.thirdOrderSymbol,
           thirdOrderPrice: opp.bidPrice,
         };
-        await this.arbitrageService.createArbitrage(newArbitrage);
+        const tradingPairsSymbols: string[] = tradingPairsStr.map(
+          (el) => el.pairSymbol,
+        );
+        await this.arbitrageService.createArbitrage(
+          newArbitrage,
+          tradingPairsSymbols,
+        );
       }
     }
   }

@@ -11,7 +11,7 @@ export class ArbitrageService {
     private readonly binanceService: BinanceService,
     private readonly vaultsService: VaultsService,
   ) {}
-  async createArbitrage(body: CreateArbitrageDto) {
+  async createArbitrage(body: CreateArbitrageDto, tradingPairs: string[]) {
     const vault = await this.vaultsService.getVaultByName(body.startStable);
     if (vault.amount < 0) {
       return;
@@ -51,8 +51,33 @@ export class ArbitrageService {
       symbol: body.secondOrderSymbol,
       quantity: thirdOrderQuantity,
     };
-    await this.binanceService.placeMarketSellOrder(marketSellOrder);
+    const thirdOrder =
+      await this.binanceService.placeMarketSellOrder(marketSellOrder);
 
-    // Step 4: buy the initial currency
+    const returnSymbol = this.getReturnSymbol(
+      body.finalAsset,
+      body.startStable,
+      tradingPairs,
+    );
+    if (returnSymbol) {
+      // Step 4: buy the initial currency
+      const thirdOrderQuantity = Number(thirdOrder.executedQty);
+      const marketBuyOrder3: BuyCryptoDto = {
+        symbol: returnSymbol,
+        quantity: thirdOrderQuantity,
+      };
+      await this.binanceService.placeMarketBuyOrder(marketBuyOrder3);
+    }
+  }
+  getReturnSymbol(
+    finalAsset: string,
+    initialAsset: string,
+    tradingPairs: string[],
+  ): string | null {
+    const symbol1 = `${finalAsset}${initialAsset}`;
+    const symbol2 = `${initialAsset}${finalAsset}`;
+    if (tradingPairs.includes(symbol1)) return symbol1;
+    if (tradingPairs.includes(symbol2)) return symbol2;
+    return null;
   }
 }

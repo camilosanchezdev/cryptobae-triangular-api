@@ -40,4 +40,8 @@ export class CreateArbitrageOpportunityDto {
   @IsString()
   @IsOptional()
   thirdOrderSymbol: string;
+
+  @IsString()
+  @IsOptional()
+  finalAsset: string;
 }
