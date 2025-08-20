@@ -63,18 +63,6 @@ export class MarketDataWebsocketService
         return;
       }
 
-      this.logger.log(
-        `Saving ${prices.length} cryptocurrency prices to database`,
-      );
-
-      try {
-        await this.cryptosService.createManyMarketData(prices);
-        this.logger.log(
-          `Successfully saved ${prices.length} cryptocurrency prices`,
-        );
-      } catch (error) {
-        this.logger.error('Failed to save prices:', error);
-      }
       this.logger.log('Checking for arbitrage opportunities...');
       // Check opportunities
       await this.arbitrageOpportunitiesService.checkCuadrangularOpportunities(

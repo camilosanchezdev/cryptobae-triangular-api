@@ -34,65 +34,127 @@ export class ArbitrageService {
       return null;
     }
     const initialAmount = vault.amount;
-
-    // Step 1: buy cryptocurrency 1
-    const firstOrderQuantity = initialAmount / body.firstOrderPrice;
-    // example:
-    // firstOrderQuantity = 10 / 0.23829 = 41.9
-    const marketBuyOrder: BuyCryptoDto = {
-      symbol: body.firstOrderSymbol,
-      quantity: firstOrderQuantity,
-    };
-    console.log(
-      '🚀 ~ ArbitrageService ~ createArbitrage ~ marketBuyOrder:',
-      marketBuyOrder,
+    let haveAsset = body.startStable;
+    let amount = initialAmount;
+    // Step 1
+    const {
+      side: side1,
+      quantity: qty1,
+      nextAsset: asset1,
+    } = getOrderTypeAndQuantity(
+      haveAsset,
+      body.firstOrderSymbol.replace(haveAsset, ''),
+      body.firstOrderSymbol,
+      body.firstOrderPrice,
+      amount,
     );
-    const firstOrder =
-      await this.binanceService.placeMarketBuyOrder(marketBuyOrder);
+    let firstOrder: BinanceOrderResponse;
+    if (side1 === 'BUY') {
+      const order: BuyCryptoDto = {
+        symbol: body.firstOrderSymbol,
+        quantity: qty1,
+      };
+      console.log(
+        '🚀 ~ ArbitrageService ~ createArbitrage ~ firstOrder (BUY):',
+        order,
+      );
+      firstOrder = await this.binanceService.placeMarketBuyOrder(order);
+    } else {
+      const order: SellCryptoDto = {
+        symbol: body.firstOrderSymbol,
+        quantity: qty1,
+      };
+      console.log(
+        '🚀 ~ ArbitrageService ~ createArbitrage ~ firstOrder (SELL):',
+        order,
+      );
+      firstOrder = await this.binanceService.placeMarketSellOrder(order);
+    }
     console.log(
       '🚀 ~ ArbitrageService ~ createArbitrage ~ firstOrder:',
       firstOrder,
     );
+    haveAsset = asset1;
+    amount = Number(firstOrder.executedQty);
 
-    // Step 2: buy cryptocurrency 2
-    const secondOrderQuantity =
-      Number(firstOrder.executedQty) * body.secondOrderPrice;
-    // example: HBARBTC
-    // secondOrderQuantity = 41 * 0,0000021 = 0,0000861
-    const marketBuyOrder2: SellCryptoDto = {
-      symbol: body.secondOrderSymbol,
-      quantity: secondOrderQuantity,
-    };
-    console.log(
-      '🚀 ~ ArbitrageService ~ createArbitrage ~ marketBuyOrder2:',
-      marketBuyOrder2,
+    // Step 2
+    const {
+      side: side2,
+      quantity: qty2,
+      nextAsset: asset2,
+    } = getOrderTypeAndQuantity(
+      haveAsset,
+      body.secondOrderSymbol.replace(haveAsset, ''),
+      body.secondOrderSymbol,
+      body.secondOrderPrice,
+      amount,
     );
-    const secondOrder =
-      await this.binanceService.placeMarketSellOrder(marketBuyOrder2);
+    let secondOrder: BinanceOrderResponse;
+    if (side2 === 'BUY') {
+      const order: BuyCryptoDto = {
+        symbol: body.secondOrderSymbol,
+        quantity: qty2,
+      };
+      console.log(
+        '🚀 ~ ArbitrageService ~ createArbitrage ~ secondOrder (BUY):',
+        order,
+      );
+      secondOrder = await this.binanceService.placeMarketBuyOrder(order);
+    } else {
+      const order: SellCryptoDto = {
+        symbol: body.secondOrderSymbol,
+        quantity: qty2,
+      };
+      console.log(
+        '🚀 ~ ArbitrageService ~ createArbitrage ~ secondOrder (SELL):',
+        order,
+      );
+      secondOrder = await this.binanceService.placeMarketSellOrder(order);
+    }
     console.log(
       '🚀 ~ ArbitrageService ~ createArbitrage ~ secondOrder:',
       secondOrder,
     );
-    // Step 3: sell cryptocurrency 2
-    const thirdOrderQuantity = Number(secondOrder.executedQty);
+    haveAsset = asset2;
+    amount = Number(secondOrder.cummulativeQuoteQty); // This is the BTC you received from selling DOGE
 
-    const marketSellOrder: SellCryptoDto = {
-      symbol: body.thirdOrderSymbol,
-      quantity: thirdOrderQuantity,
-    };
-    console.log(
-      '🚀 ~ ArbitrageService ~ createArbitrage ~ marketSellOrder:',
-      marketSellOrder,
+    // Step 3
+    const { side: side3, quantity: qty3 } = getOrderTypeAndQuantity(
+      haveAsset,
+      body.thirdOrderSymbol.replace(haveAsset, ''),
+      body.thirdOrderSymbol,
+      body.thirdOrderPrice,
+      amount,
     );
-    const thirdOrder =
-      await this.binanceService.placeMarketSellOrder(marketSellOrder);
+    let thirdOrder: BinanceOrderResponse;
+    if (side3 === 'BUY') {
+      const order: BuyCryptoDto = {
+        symbol: body.thirdOrderSymbol,
+        quantity: qty3,
+      };
+      console.log(
+        '🚀 ~ ArbitrageService ~ createArbitrage ~ thirdOrder (BUY):',
+        order,
+      );
+      thirdOrder = await this.binanceService.placeMarketBuyOrder(order);
+    } else {
+      const order: SellCryptoDto = {
+        symbol: body.thirdOrderSymbol,
+        quantity: qty3,
+      };
+      console.log(
+        '🚀 ~ ArbitrageService ~ createArbitrage ~ thirdOrder (SELL):',
+        order,
+      );
+      thirdOrder = await this.binanceService.placeMarketSellOrder(order);
+    }
     console.log(
       '🚀 ~ ArbitrageService ~ createArbitrage ~ thirdOrder:',
       thirdOrder,
     );
 
     return {
-      orders: [firstOrder, secondOrder, thirdOrder],
+      orders: [firstOrder, secondOrder, thirdOrder] as BinanceOrderResponse[],
       firstTradingPairId: body.firstTradingPairId,
       secondTradingPairId: body.secondTradingPairId,
       thirdTradingPairId: body.thirdTradingPairId,
@@ -213,5 +275,58 @@ export class ArbitrageService {
         false,
       );
     }
+  }
+}
+
+function getOrderTypeAndQuantity(
+  haveAsset: string,
+  wantAsset: string,
+  symbol: string,
+  price: number,
+  amount: number,
+) {
+  console.log('🚀 ~ getOrderTypeAndQuantity ~ haveAsset:', haveAsset);
+  // Robustly extract base and quote from symbol
+  let base = '';
+  let quote = '';
+  if (symbol.endsWith(haveAsset)) {
+    // haveAsset is quote
+    quote = haveAsset;
+    base = symbol.slice(0, symbol.length - haveAsset.length);
+  } else if (symbol.startsWith(haveAsset)) {
+    // haveAsset is base
+    base = haveAsset;
+    quote = symbol.slice(haveAsset.length);
+  } else {
+    // fallback: try wantAsset
+    if (symbol.endsWith(wantAsset)) {
+      quote = wantAsset;
+      base = symbol.slice(0, symbol.length - wantAsset.length);
+    } else if (symbol.startsWith(wantAsset)) {
+      base = wantAsset;
+      quote = symbol.slice(wantAsset.length);
+    } else {
+      throw new Error('Cannot determine base/quote from symbol');
+    }
+  }
+  console.log('🚀 ~ getOrderTypeAndQuantity ~ base:', base);
+  console.log('🚀 ~ getOrderTypeAndQuantity ~ quote:', quote);
+
+  if (haveAsset === quote) {
+    // BUY: spend quote, get base
+    return {
+      side: 'BUY',
+      quantity: amount / price, // how much base you get
+      nextAsset: base,
+    };
+  } else if (haveAsset === base) {
+    // SELL: spend base, get quote
+    return {
+      side: 'SELL',
+      quantity: amount, // how much base you sell
+      nextAsset: quote,
+    };
+  } else {
+    throw new Error('Asset flow mismatch');
   }
 }
