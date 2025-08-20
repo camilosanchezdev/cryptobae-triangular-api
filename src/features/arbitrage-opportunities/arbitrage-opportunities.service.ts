@@ -304,10 +304,12 @@ export class ArbitrageOpportunitiesService {
     }
     const result =
       this.checkHighestProfitOpportunityByStartStable(opportunities);
+    this.logger.log(`Found ${result.length} opportunities`);
     const newOpportunities: CreateArbitrageOpportunityDto[] = [];
     if (this.isProductionMode) {
       const binanceOrderResponses: SaveOrdersRequest[] = [];
       for (const opp of result) {
+        this.logger.log(`Opportunity ${JSON.stringify(opp)}`);
         const newArbitrage: CreateArbitrageDto = {
           finalAsset: opp.finalAsset,
           startStable: opp.startStable,
@@ -321,7 +323,7 @@ export class ArbitrageOpportunitiesService {
           secondTradingPairId: opp.secondTradingPairId,
           thirdTradingPairId: opp.thirdTradingPairId,
         };
-
+        this.logger.log(`Arbitrage ${JSON.stringify(newArbitrage)}`);
         const request =
           await this.arbitrageService.createArbitrage(newArbitrage);
         let isExecuted = false;

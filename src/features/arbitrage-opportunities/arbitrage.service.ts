@@ -30,37 +30,66 @@ export class ArbitrageService {
     body: CreateArbitrageDto,
   ): Promise<SaveOrdersRequest | null> {
     const vault = await this.vaultsService.getVaultByName(body.startStable);
-    if (vault.amount < 0 && vault.amount < this.minCryptoPosition) {
+    if (vault.amount <= 0 || vault.amount < this.minCryptoPosition) {
       return null;
     }
     const initialAmount = vault.amount;
+
     // Step 1: buy cryptocurrency 1
     const firstOrderQuantity = initialAmount / body.firstOrderPrice;
+    // example:
+    // firstOrderQuantity = 10 / 0.23829 = 41.9
     const marketBuyOrder: BuyCryptoDto = {
       symbol: body.firstOrderSymbol,
       quantity: firstOrderQuantity,
     };
+    console.log(
+      '🚀 ~ ArbitrageService ~ createArbitrage ~ marketBuyOrder:',
+      marketBuyOrder,
+    );
     const firstOrder =
       await this.binanceService.placeMarketBuyOrder(marketBuyOrder);
+    console.log(
+      '🚀 ~ ArbitrageService ~ createArbitrage ~ firstOrder:',
+      firstOrder,
+    );
 
     // Step 2: buy cryptocurrency 2
     const secondOrderQuantity =
-      Number(firstOrder.executedQty) / body.secondOrderPrice;
-    const marketBuyOrder2: BuyCryptoDto = {
+      Number(firstOrder.executedQty) * body.secondOrderPrice;
+    // example: HBARBTC
+    // secondOrderQuantity = 41 * 0,0000021 = 0,0000861
+    const marketBuyOrder2: SellCryptoDto = {
       symbol: body.secondOrderSymbol,
       quantity: secondOrderQuantity,
     };
+    console.log(
+      '🚀 ~ ArbitrageService ~ createArbitrage ~ marketBuyOrder2:',
+      marketBuyOrder2,
+    );
     const secondOrder =
-      await this.binanceService.placeMarketBuyOrder(marketBuyOrder2);
+      await this.binanceService.placeMarketSellOrder(marketBuyOrder2);
+    console.log(
+      '🚀 ~ ArbitrageService ~ createArbitrage ~ secondOrder:',
+      secondOrder,
+    );
     // Step 3: sell cryptocurrency 2
-    const thirdOrderQuantity =
-      Number(secondOrder.executedQty) * body.thirdOrderPrice;
+    const thirdOrderQuantity = Number(secondOrder.executedQty);
+
     const marketSellOrder: SellCryptoDto = {
-      symbol: body.secondOrderSymbol,
+      symbol: body.thirdOrderSymbol,
       quantity: thirdOrderQuantity,
     };
+    console.log(
+      '🚀 ~ ArbitrageService ~ createArbitrage ~ marketSellOrder:',
+      marketSellOrder,
+    );
     const thirdOrder =
       await this.binanceService.placeMarketSellOrder(marketSellOrder);
+    console.log(
+      '🚀 ~ ArbitrageService ~ createArbitrage ~ thirdOrder:',
+      thirdOrder,
+    );
 
     return {
       orders: [firstOrder, secondOrder, thirdOrder],

@@ -328,13 +328,6 @@ export class BinanceService {
       }
 
       // Check USDT balance before placing order
-      const usdtBalance = await this.getSpotBalance('USDT');
-
-      if (usdtBalance < notionalValue) {
-        throw new Error(
-          `Insufficient USDT balance. Available: ${usdtBalance}, Required: ${notionalValue}. Please transfer USDT from Funding to Spot wallet.`,
-        );
-      }
 
       // Validate minimum quantity
       if (adjustedQuantity < minQty) {
@@ -357,9 +350,15 @@ export class BinanceService {
 
       return order;
     } catch (error) {
+      const customResponse = JSON.stringify({
+        symbol,
+        quantity,
+      });
+      const customError =
+        error instanceof Error ? error.message : String(error);
       await this.errorLogsService.createErrorLog({
         message: 'Error placing market buy order',
-        details: error instanceof Error ? error.message : String(error),
+        details: JSON.stringify({ customResponse, customError }),
         context: 'BinanceService.placeMarketBuyOrder',
       });
       throw new InternalServerErrorException('Failed to place buy order');
@@ -411,16 +410,6 @@ export class BinanceService {
         }
       }
 
-      // Check if user has enough of the base asset to sell
-      const baseAsset = symbol.replace('USDT', ''); // Extract base asset (e.g., TRX from TRXUSDT)
-      const baseAssetBalance = await this.getSpotBalance(baseAsset);
-
-      if (baseAssetBalance < adjustedQuantity) {
-        throw new Error(
-          `Insufficient ${baseAsset} balance. Available: ${baseAssetBalance}, Required: ${adjustedQuantity}.`,
-        );
-      }
-
       // Validate minimum quantity
       if (adjustedQuantity < minQty) {
         throw new Error(
@@ -441,9 +430,16 @@ export class BinanceService {
       );
       return order;
     } catch (error) {
+      const customResponse = JSON.stringify({
+        symbol,
+        quantity,
+      });
+      const customError =
+        error instanceof Error ? error.message : String(error);
+
       await this.errorLogsService.createErrorLog({
         message: 'Error placing market sell order',
-        details: error instanceof Error ? error.message : String(error),
+        details: JSON.stringify({ customResponse, customError }),
         context: 'BinanceService.placeMarketSellOrder',
       });
       throw new InternalServerErrorException('Failed to place sell order');
