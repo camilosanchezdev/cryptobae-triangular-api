@@ -18,6 +18,7 @@ import { SaveOrdersRequest } from './interfaces/save-orders-request.interface';
 
 @Injectable()
 export class ArbitrageService {
+  private readonly minCryptoPosition = Number(process.env.CRYPTO_POSITION);
   constructor(
     private readonly binanceService: BinanceService,
     private readonly vaultsService: VaultsService,
@@ -29,7 +30,7 @@ export class ArbitrageService {
     body: CreateArbitrageDto,
   ): Promise<SaveOrdersRequest | null> {
     const vault = await this.vaultsService.getVaultByName(body.startStable);
-    if (vault.amount < 0) {
+    if (vault.amount < 0 && vault.amount < this.minCryptoPosition) {
       return null;
     }
     const initialAmount = vault.amount;

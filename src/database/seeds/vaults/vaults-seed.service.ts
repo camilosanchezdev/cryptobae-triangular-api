@@ -19,6 +19,30 @@ export class VaultsSeedService {
         name: 'BNB',
         amount: 0,
       },
+      {
+        name: 'USDC',
+        amount: 0,
+      },
+      {
+        name: 'FDUSD',
+        amount: 0,
+      },
+      {
+        name: 'DAI',
+        amount: 0,
+      },
+      {
+        name: 'TUSD',
+        amount: 0,
+      },
+      {
+        name: 'USDP',
+        amount: 0,
+      },
+      {
+        name: 'XUSD',
+        amount: 0,
+      },
     ];
 
     const masterVaultCount = await this.masterVaultsRepository.count();

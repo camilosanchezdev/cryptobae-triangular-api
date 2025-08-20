@@ -1,6 +1,9 @@
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional } from 'class-validator';
 
 export class CreateArbitrageOpportunityDto {
+  @IsBoolean()
+  @IsOptional()
+  isExecuted?: boolean;
   @IsNumber()
   profitPercentage: number;
 
@@ -24,24 +27,4 @@ export class CreateArbitrageOpportunityDto {
 
   @IsNumber()
   thirdTradingPairId: number;
-
-  @IsString()
-  @IsOptional()
-  startStable: string;
-
-  @IsString()
-  @IsOptional()
-  firstOrderSymbol: string;
-
-  @IsString()
-  @IsOptional()
-  secondOrderSymbol: string;
-
-  @IsString()
-  @IsOptional()
-  thirdOrderSymbol: string;
-
-  @IsString()
-  @IsOptional()
-  finalAsset: string;
 }

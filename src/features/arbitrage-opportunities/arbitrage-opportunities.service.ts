@@ -7,6 +7,7 @@ import { ArbitrageService } from './arbitrage.service';
 import { CreateArbitrageOpportunityDto } from './dtos/create-arbitrage-opportunity.dto';
 import { CreateArbitrageDto } from './dtos/create-arbitrage.dto';
 import { ArbitrageOpportunityEntity } from './entities/arbitrage-opportunity.entity';
+import { ArbitrageOpportunityRequest } from './interfaces/arbitrage-opportunity-request';
 import { SaveOrdersRequest } from './interfaces/save-orders-request.interface';
 // Interface for cuadrangular (quadrangular) arbitrage path
 interface CuadrangularPath {
@@ -223,7 +224,7 @@ export class ArbitrageOpportunitiesService {
   checkCuadrangularOpportunity(
     path: CuadrangularPath,
     prices: CreateMarketDataDto[],
-  ): CreateArbitrageOpportunityDto | null {
+  ): ArbitrageOpportunityRequest | null {
     const [pairId1, pairId2, pairId3] = path.tradingPairIds;
     const prices1 = prices.find((price) => price.tradingPairId === pairId1);
     if (!prices1) {
@@ -260,7 +261,7 @@ export class ArbitrageOpportunitiesService {
       );
 
     if (isProfitable && profitPercent >= this.minProfitPercentage) {
-      const newOpportunity: CreateArbitrageOpportunityDto = {
+      const newOpportunity: ArbitrageOpportunityRequest = {
         profitPercentage: profitPercent,
         minProfitPercent: this.minProfitPercentage,
         firstTradingPairId: path.tradingPairIds[0],
@@ -293,7 +294,8 @@ export class ArbitrageOpportunitiesService {
     const stablecoins = await this.cryptoService.getStablecoins();
     const stablecoinStr = stablecoins.map((coin) => coin.symbol);
     const paths = this.getCuadrangularPaths(tradingPairsStr, stablecoinStr);
-    const opportunities: CreateArbitrageOpportunityDto[] = [];
+    const opportunities: ArbitrageOpportunityRequest[] = [];
+
     for (const path of paths) {
       const opportunity = this.checkCuadrangularOpportunity(path, prices);
       if (opportunity) {
@@ -302,8 +304,7 @@ export class ArbitrageOpportunitiesService {
     }
     const result =
       this.checkHighestProfitOpportunityByStartStable(opportunities);
-
-    await this.createArbitrageOpportunities(result);
+    const newOpportunities: CreateArbitrageOpportunityDto[] = [];
     if (this.isProductionMode) {
       const binanceOrderResponses: SaveOrdersRequest[] = [];
       for (const opp of result) {
@@ -323,18 +324,35 @@ export class ArbitrageOpportunitiesService {
 
         const request =
           await this.arbitrageService.createArbitrage(newArbitrage);
+        let isExecuted = false;
         if (request) {
           binanceOrderResponses.push(request);
+          isExecuted = true;
         }
+        const op: CreateArbitrageOpportunityDto = {
+          isExecuted,
+          profitPercentage: opp.profitPercentage,
+          askPrice1: opp.askPrice1,
+          askPrice2: opp.askPrice2,
+          bidPrice: opp.bidPrice,
+          minProfitPercent: opp.minProfitPercent,
+          firstTradingPairId: opp.firstTradingPairId,
+          secondTradingPairId: opp.secondTradingPairId,
+          thirdTradingPairId: opp.thirdTradingPairId,
+        };
+        newOpportunities.push(op);
       }
+
       await this.arbitrageService.saveOrders(binanceOrderResponses);
+
+      await this.createArbitrageOpportunities(newOpportunities);
     }
   }
   checkHighestProfitOpportunityByStartStable(
-    opportunities: CreateArbitrageOpportunityDto[],
-  ): CreateArbitrageOpportunityDto[] {
+    opportunities: ArbitrageOpportunityRequest[],
+  ): ArbitrageOpportunityRequest[] {
     if (!opportunities || opportunities.length === 0) return [];
-    const highestByStable = new Map<string, CreateArbitrageOpportunityDto>();
+    const highestByStable = new Map<string, ArbitrageOpportunityRequest>();
     for (const opp of opportunities) {
       const current = highestByStable.get(opp.startStable);
       if (!current || opp.profitPercentage > current.profitPercentage) {
