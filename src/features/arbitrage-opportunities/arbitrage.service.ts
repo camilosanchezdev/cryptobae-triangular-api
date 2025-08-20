@@ -2,14 +2,23 @@ import { Injectable } from '@nestjs/common';
 import { BinanceService } from '../binance/binance.service';
 import { BuyCryptoDto } from '../binance/dtos/buy-crypto.dto';
 import { SellCryptoDto } from '../binance/dtos/sell-crypto.dto';
-import { CreateArbitrage } from './interfaces/create-arbitrage.interface';
+import { VaultsService } from '../vaults/vaults.service';
+import { CreateArbitrageDto } from './dtos/create-arbitrage.dto';
 
 @Injectable()
 export class ArbitrageService {
-  constructor(private readonly binanceService: BinanceService) {}
-  async createArbitrage(body: CreateArbitrage) {
+  constructor(
+    private readonly binanceService: BinanceService,
+    private readonly vaultsService: VaultsService,
+  ) {}
+  async createArbitrage(body: CreateArbitrageDto) {
+    const vault = await this.vaultsService.getVaultByName(body.startStable);
+    if (vault.amount < 0) {
+      return;
+    }
+    const initialAmount = vault.amount;
     // Step 1: buy cryptocurrency 1
-    const firstOrderQuantity = body.initialAmount / body.firstOrderPrice;
+    const firstOrderQuantity = initialAmount / body.firstOrderPrice;
     // Example
     // HBAR/USDT - ask price 1 = 0.23396
     // firstOrderQuantity = 100 / 0.23396 = 427.56
@@ -43,5 +52,7 @@ export class ArbitrageService {
       quantity: thirdOrderQuantity,
     };
     await this.binanceService.placeMarketSellOrder(marketSellOrder);
+
+    // Step 4: buy the initial currency
   }
 }

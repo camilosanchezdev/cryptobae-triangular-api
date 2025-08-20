@@ -1,4 +1,4 @@
-import { IsNumber } from 'class-validator';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class CreateArbitrageOpportunityDto {
   @IsNumber()
@@ -24,4 +24,20 @@ export class CreateArbitrageOpportunityDto {
 
   @IsNumber()
   thirdTradingPairId: number;
+
+  @IsString()
+  @IsOptional()
+  startStable: string;
+
+  @IsString()
+  @IsOptional()
+  firstOrderSymbol: string;
+
+  @IsString()
+  @IsOptional()
+  secondOrderSymbol: string;
+
+  @IsString()
+  @IsOptional()
+  thirdOrderSymbol: string;
 }

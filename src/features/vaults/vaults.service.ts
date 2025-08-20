@@ -27,6 +27,16 @@ export class VaultsService {
     private readonly dataSource: DataSource,
   ) {}
 
+  async getVaultByName(name: string): Promise<MasterVaultEntity> {
+    const vault = await this.masterVaultRepository.findOne({
+      where: { name, deleted: false },
+    });
+    if (!vault) {
+      throw new BadRequestException(`Vault with name ${name} not found`);
+    }
+    return vault;
+  }
+  //
   async updateMasterVaultFee(
     amount: number,
     transactionId: number,

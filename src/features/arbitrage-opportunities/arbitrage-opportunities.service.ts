@@ -3,7 +3,9 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CryptosService } from '../cryptos/cryptos.service';
 import { CreateMarketDataDto } from '../cryptos/dtos/create-market-data.dto';
+import { ArbitrageService } from './arbitrage.service';
 import { CreateArbitrageOpportunityDto } from './dtos/create-arbitrage-opportunity.dto';
+import { CreateArbitrageDto } from './dtos/create-arbitrage.dto';
 import { ArbitrageOpportunityEntity } from './entities/arbitrage-opportunity.entity';
 // Interface for cuadrangular (quadrangular) arbitrage path
 interface CuadrangularPath {
@@ -36,16 +38,20 @@ export class ArbitrageOpportunitiesService {
   private readonly minProfitPercentage = Number(
     process.env.CRYPTO_MIN_PROFIT_PERCENTAGE,
   );
+  private readonly isProductionMode =
+    process.env.CRYPTO_PRODUCTION_MODE === 'true';
   constructor(
     @InjectRepository(ArbitrageOpportunityEntity)
     private readonly repository: Repository<ArbitrageOpportunityEntity>,
     private readonly cryptoService: CryptosService,
+    private readonly arbitrageService: ArbitrageService,
   ) {}
 
-  async createArbitrageOpportunity(body: CreateArbitrageOpportunityDto) {
-    const opportunity = this.repository.create(body);
-    await this.repository.save(opportunity);
+  async createArbitrageOpportunities(body: CreateArbitrageOpportunityDto[]) {
+    const opportunities = body.map((item) => this.repository.create(item));
+    await this.repository.save(opportunities);
   }
+
   /**
    * Checks if a triangular arbitrage is profitable.
    * @param startAmount Initial stablecoin amount (e.g., 1000 USDT)
@@ -213,27 +219,27 @@ export class ArbitrageOpportunitiesService {
   /**
    * Checks a single cuadrangular opportunity for profitability and logs the result.
    */
-  async checkCuadrangularOpportunity(
+  checkCuadrangularOpportunity(
     path: CuadrangularPath,
     prices: CreateMarketDataDto[],
-  ): Promise<boolean> {
+  ): CreateArbitrageOpportunityDto | null {
     const [pairId1, pairId2, pairId3] = path.tradingPairIds;
     const prices1 = prices.find((price) => price.tradingPairId === pairId1);
     if (!prices1) {
       this.logger.log('No prices found for first trading pair');
-      return false;
+      return null;
     }
     const askPrice1 = Number(prices1.askPrice);
     const prices2 = prices.find((price) => price.tradingPairId === pairId2);
     if (!prices2) {
       this.logger.log('No prices found for second trading pair');
-      return false;
+      return null;
     }
     const askPrice2 = Number(prices2.askPrice);
     const prices3 = prices.find((price) => price.tradingPairId === pairId3);
     if (!prices3) {
       this.logger.log('No prices found for third trading pair');
-      return false;
+      return null;
     }
     const bidPrice3 = Number(prices3.bidPrice);
     // Use the profit check
@@ -262,12 +268,15 @@ export class ArbitrageOpportunitiesService {
         askPrice1: askPrice1,
         askPrice2: askPrice2,
         bidPrice: bidPrice3,
+        startStable: path.startStable,
+        firstOrderSymbol: path.path[0],
+        secondOrderSymbol: path.path[1],
+        thirdOrderSymbol: path.path[2],
       };
-      await this.createArbitrageOpportunity(newOpportunity);
-      // TODO: trigger order execution
-      return true;
+
+      return newOpportunity;
     }
-    return false;
+    return null;
   }
 
   /**
@@ -282,12 +291,52 @@ export class ArbitrageOpportunitiesService {
     const stablecoins = await this.cryptoService.getStablecoins();
     const stablecoinStr = stablecoins.map((coin) => coin.symbol);
     const paths = this.getCuadrangularPaths(tradingPairsStr, stablecoinStr);
-
+    const opportunities: CreateArbitrageOpportunityDto[] = [];
     for (const path of paths) {
-      await this.checkCuadrangularOpportunity(path, prices);
+      const opportunity = this.checkCuadrangularOpportunity(path, prices);
+      if (opportunity) {
+        opportunities.push(opportunity);
+      }
+    }
+    const result =
+      this.checkHighestProfitOpportunityByStartStable(opportunities);
+
+    await this.createArbitrageOpportunities(result);
+    // TODO: operate on the result
+    if (this.isProductionMode) {
+      for (const opp of result) {
+        const newArbitrage: CreateArbitrageDto = {
+          startStable: opp.startStable,
+          firstOrderSymbol: opp.firstOrderSymbol,
+          firstOrderPrice: opp.askPrice1,
+          secondOrderSymbol: opp.secondOrderSymbol,
+          secondOrderPrice: opp.askPrice2,
+          thirdOrderSymbol: opp.thirdOrderSymbol,
+          thirdOrderPrice: opp.bidPrice,
+        };
+        await this.arbitrageService.createArbitrage(newArbitrage);
+      }
     }
   }
-  // Helper interface for triangular path
+  checkHighestProfitOpportunityByStartStable(
+    opportunities: CreateArbitrageOpportunityDto[],
+  ): CreateArbitrageOpportunityDto[] {
+    if (!opportunities || opportunities.length === 0) return [];
+    const highestByStable = new Map<string, CreateArbitrageOpportunityDto>();
+    for (const opp of opportunities) {
+      const current = highestByStable.get(opp.startStable);
+      if (!current || opp.profitPercentage > current.profitPercentage) {
+        highestByStable.set(opp.startStable, opp);
+      }
+    }
+    const result = Array.from(highestByStable.values());
+    result.forEach((opp) => {
+      this.logger.log(
+        `Highest profit opportunity for ${opp.startStable}: ${opp.profitPercentage}%`,
+      );
+    });
+    return result;
+  }
 
   /**
    * Returns all possible stablecoin -> coin -> stablecoin triangular arbitrage paths

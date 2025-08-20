@@ -14,7 +14,7 @@ export class MarketDataWebsocketService
 {
   private readonly logger = new Logger(MarketDataWebsocketService.name);
   private marketDataSaveInterval: NodeJS.Timeout | null = null;
-  private readonly marketDataSaveIntervalMs = 5 * 60 * 1000; // 5 minutes for arbitrage market data
+  private readonly marketDataSaveIntervalMs = 1 * 60 * 1000; // 5 minutes for arbitrage market data
 
   constructor(
     private readonly sharedMarketDataService: SharedMarketDataService,
