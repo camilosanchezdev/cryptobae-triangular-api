@@ -41,7 +41,7 @@ export class ArbitrageService {
       side: side1,
       quantity: qty1,
       nextAsset: asset1,
-    } = getOrderTypeAndQuantity(
+    } = this.getOrderTypeAndQuantity(
       haveAsset,
       body.firstOrderSymbol.replace(haveAsset, ''),
       body.firstOrderSymbol,
@@ -82,7 +82,7 @@ export class ArbitrageService {
       side: side2,
       quantity: qty2,
       nextAsset: asset2,
-    } = getOrderTypeAndQuantity(
+    } = this.getOrderTypeAndQuantity(
       haveAsset,
       body.secondOrderSymbol.replace(haveAsset, ''),
       body.secondOrderSymbol,
@@ -119,7 +119,7 @@ export class ArbitrageService {
     amount = Number(secondOrder.executedQty); // This is the BTC you received from selling DOGE
 
     // Step 3
-    const { side: side3, quantity: qty3 } = getOrderTypeAndQuantity(
+    const { side: side3, quantity: qty3 } = this.getOrderTypeAndQuantity(
       haveAsset,
       body.thirdOrderSymbol.replace(haveAsset, ''),
       body.thirdOrderSymbol,
@@ -152,7 +152,16 @@ export class ArbitrageService {
       '🚀 ~ ArbitrageService ~ createArbitrage ~ thirdOrder:',
       thirdOrder,
     );
-
+    // Step 4
+    // re buy USDT
+    const rebuyUSDTOrder = await this.rebuyUSDT(
+      body.finalAsset,
+      Number(thirdOrder.executedQty),
+    );
+    console.log(
+      '🚀 ~ ArbitrageService ~ createArbitrage ~ rebuyUSDTOrder:',
+      rebuyUSDTOrder,
+    );
     return {
       orders: [firstOrder, secondOrder, thirdOrder] as BinanceOrderResponse[],
       firstTradingPairId: body.firstTradingPairId,
@@ -276,57 +285,76 @@ export class ArbitrageService {
       );
     }
   }
-}
-
-function getOrderTypeAndQuantity(
-  haveAsset: string,
-  wantAsset: string,
-  symbol: string,
-  price: number,
-  amount: number,
-) {
-  console.log('🚀 ~ getOrderTypeAndQuantity ~ haveAsset:', haveAsset);
-  // Robustly extract base and quote from symbol
-  let base = '';
-  let quote = '';
-  if (symbol.endsWith(haveAsset)) {
-    // haveAsset is quote
-    quote = haveAsset;
-    base = symbol.slice(0, symbol.length - haveAsset.length);
-  } else if (symbol.startsWith(haveAsset)) {
-    // haveAsset is base
-    base = haveAsset;
-    quote = symbol.slice(haveAsset.length);
-  } else {
-    // fallback: try wantAsset
-    if (symbol.endsWith(wantAsset)) {
-      quote = wantAsset;
-      base = symbol.slice(0, symbol.length - wantAsset.length);
-    } else if (symbol.startsWith(wantAsset)) {
-      base = wantAsset;
-      quote = symbol.slice(wantAsset.length);
-    } else {
-      throw new Error('Cannot determine base/quote from symbol');
-    }
+  /**
+   * Re-buy USDT from a given asset by placing a market order.
+   * @param fromAsset The asset to convert to USDT (e.g., BTC, ETH)
+   * @param amount The amount of the asset to convert
+   * @returns BinanceOrderResponse
+   */
+  async rebuyUSDT(
+    fromAsset: string,
+    amount: number,
+  ): Promise<BinanceOrderResponse> {
+    const symbol = fromAsset + 'USDT';
+    // Try to sell the asset for USDT
+    const order = {
+      symbol,
+      quantity: amount,
+    };
+    console.log('🚀 ~ ArbitrageService ~ rebuyUSDT:', order);
+    // Place a market sell order (selling fromAsset to get USDT)
+    return this.binanceService.placeMarketSellOrder(order);
   }
-  console.log('🚀 ~ getOrderTypeAndQuantity ~ base:', base);
-  console.log('🚀 ~ getOrderTypeAndQuantity ~ quote:', quote);
+  getOrderTypeAndQuantity(
+    haveAsset: string,
+    wantAsset: string,
+    symbol: string,
+    price: number,
+    amount: number,
+  ) {
+    console.log('🚀 ~ getOrderTypeAndQuantity ~ haveAsset:', haveAsset);
+    // Robustly extract base and quote from symbol
+    let base = '';
+    let quote = '';
+    if (symbol.endsWith(haveAsset)) {
+      // haveAsset is quote
+      quote = haveAsset;
+      base = symbol.slice(0, symbol.length - haveAsset.length);
+    } else if (symbol.startsWith(haveAsset)) {
+      // haveAsset is base
+      base = haveAsset;
+      quote = symbol.slice(haveAsset.length);
+    } else {
+      // fallback: try wantAsset
+      if (symbol.endsWith(wantAsset)) {
+        quote = wantAsset;
+        base = symbol.slice(0, symbol.length - wantAsset.length);
+      } else if (symbol.startsWith(wantAsset)) {
+        base = wantAsset;
+        quote = symbol.slice(wantAsset.length);
+      } else {
+        throw new Error('Cannot determine base/quote from symbol');
+      }
+    }
+    console.log('🚀 ~ getOrderTypeAndQuantity ~ base:', base);
+    console.log('🚀 ~ getOrderTypeAndQuantity ~ quote:', quote);
 
-  if (haveAsset === quote) {
-    // BUY: spend quote, get base
-    return {
-      side: 'BUY',
-      quantity: amount / price, // how much base you get
-      nextAsset: base,
-    };
-  } else if (haveAsset === base) {
-    // SELL: spend base, get quote
-    return {
-      side: 'SELL',
-      quantity: amount, // how much base you sell
-      nextAsset: quote,
-    };
-  } else {
-    throw new Error('Asset flow mismatch');
+    if (haveAsset === quote) {
+      // BUY: spend quote, get base
+      return {
+        side: 'BUY',
+        quantity: amount / price, // how much base you get
+        nextAsset: base,
+      };
+    } else if (haveAsset === base) {
+      // SELL: spend base, get quote
+      return {
+        side: 'SELL',
+        quantity: amount, // how much base you sell
+        nextAsset: quote,
+      };
+    } else {
+      throw new Error('Asset flow mismatch');
+    }
   }
 }
