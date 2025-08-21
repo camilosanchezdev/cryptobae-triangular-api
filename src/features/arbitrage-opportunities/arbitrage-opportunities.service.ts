@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CryptosService } from '../cryptos/cryptos.service';
 import { CreateMarketDataDto } from '../cryptos/dtos/create-market-data.dto';
+import { MasterVaultsEnum } from '../vaults/enums/master-vaults.enum';
 import { ArbitrageService } from './arbitrage.service';
 import { CreateArbitrageOpportunityDto } from './dtos/create-arbitrage-opportunity.dto';
 import { CreateArbitrageDto } from './dtos/create-arbitrage.dto';
@@ -303,8 +304,11 @@ export class ArbitrageOpportunitiesService {
         opportunities.push(opportunity);
       }
     }
-    const result =
+    const response =
       this.checkHighestProfitOpportunityByStartStable(opportunities);
+    const result = response.filter(
+      (e) => e.startStable === MasterVaultsEnum.USDT.toString(),
+    );
     this.logger.log(`Found ${result.length} opportunities`);
     const newOpportunities: CreateArbitrageOpportunityDto[] = [];
 
