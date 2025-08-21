@@ -19,6 +19,9 @@ import { SaveOrdersRequest } from './interfaces/save-orders-request.interface';
 @Injectable()
 export class ArbitrageService {
   private readonly minCryptoPosition = Number(process.env.CRYPTO_POSITION);
+  private readonly isAutoRebuyEnabled = Boolean(
+    process.env.CRYPTO_AUTO_REBUY_ENABLED === 'true',
+  );
   constructor(
     private readonly binanceService: BinanceService,
     private readonly vaultsService: VaultsService,
@@ -154,14 +157,19 @@ export class ArbitrageService {
     );
     // Step 4
     // re buy USDT
-    const rebuyUSDTOrder = await this.rebuyUSDT(
-      body.finalAsset,
-      Number(thirdOrder.executedQty),
-    );
-    console.log(
-      '🚀 ~ ArbitrageService ~ createArbitrage ~ rebuyUSDTOrder:',
-      rebuyUSDTOrder,
-    );
+    let rebuyAmount = 0;
+    if (this.isAutoRebuyEnabled) {
+      const rebuyUSDTOrder = await this.rebuyUSDT(
+        body.finalAsset,
+        Number(thirdOrder.executedQty),
+      );
+      rebuyAmount = Number(rebuyUSDTOrder.cummulativeQuoteQty);
+      console.log(
+        '🚀 ~ ArbitrageService ~ createArbitrage ~ rebuyUSDTOrder:',
+        rebuyUSDTOrder,
+      );
+    }
+
     return {
       orders: [firstOrder, secondOrder, thirdOrder] as BinanceOrderResponse[],
       firstTradingPairId: body.firstTradingPairId,
@@ -169,7 +177,7 @@ export class ArbitrageService {
       thirdTradingPairId: body.thirdTradingPairId,
       startStable: body.startStable,
       finalAsset: body.finalAsset,
-      rebuyAmount: Number(rebuyUSDTOrder.cummulativeQuoteQty),
+      rebuyAmount,
     };
   }
   async updateVault(
@@ -287,14 +295,16 @@ export class ArbitrageService {
       );
 
       // Increase initial vault after rebuy
-      const rebuyAmount = request.rebuyAmount;
 
-      await this.updateVault(
-        rebuyAmount,
-        lastOperation.transactionId,
-        request.startStable,
-        false,
-      );
+      const rebuyAmount = request.rebuyAmount;
+      if (rebuyAmount !== 0) {
+        await this.updateVault(
+          rebuyAmount,
+          lastOperation.transactionId,
+          request.startStable,
+          false,
+        );
+      }
     }
   }
   /**
