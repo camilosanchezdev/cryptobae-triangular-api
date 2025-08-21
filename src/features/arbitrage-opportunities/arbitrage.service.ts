@@ -78,7 +78,12 @@ export class ArbitrageService {
       firstOrder,
     );
     haveAsset = asset1;
-    amount = Number(firstOrder.executedQty);
+    // After first order, set amount based on side
+    if (side1 === 'BUY') {
+      amount = Number(firstOrder.executedQty); // you now have this much base asset
+    } else {
+      amount = Number(firstOrder.cummulativeQuoteQty); // you now have this much quote asset
+    }
 
     // Step 2
     const {
@@ -119,7 +124,12 @@ export class ArbitrageService {
       secondOrder,
     );
     haveAsset = asset2;
-    amount = Number(secondOrder.executedQty); // This is the BTC you received from selling DOGE
+    // After second order, set amount based on side
+    if (side2 === 'BUY') {
+      amount = Number(secondOrder.executedQty);
+    } else {
+      amount = Number(secondOrder.cummulativeQuoteQty);
+    }
 
     // Step 3
     const { side: side3, quantity: qty3 } = this.getOrderTypeAndQuantity(
@@ -155,6 +165,12 @@ export class ArbitrageService {
       '🚀 ~ ArbitrageService ~ createArbitrage ~ thirdOrder:',
       thirdOrder,
     );
+    // After third order, set amount based on side
+    if (side3 === 'BUY') {
+      amount = Number(thirdOrder.executedQty);
+    } else {
+      amount = Number(thirdOrder.cummulativeQuoteQty);
+    }
     // Step 4
     // re buy USDT
     let rebuyAmount = 0;
