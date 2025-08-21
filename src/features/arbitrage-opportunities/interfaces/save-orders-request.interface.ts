@@ -7,4 +7,5 @@ export interface SaveOrdersRequest {
   thirdTradingPairId: number;
   startStable: string;
   finalAsset: string;
+  rebuyAmount: number;
 }

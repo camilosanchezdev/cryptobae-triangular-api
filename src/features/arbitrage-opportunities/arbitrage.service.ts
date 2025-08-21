@@ -169,16 +169,16 @@ export class ArbitrageService {
       thirdTradingPairId: body.thirdTradingPairId,
       startStable: body.startStable,
       finalAsset: body.finalAsset,
+      rebuyAmount: Number(rebuyUSDTOrder.cummulativeQuoteQty),
     };
   }
   async updateVault(
-    finalAmountBuy: number,
-    finalPriceBuy: number,
+    amount: number,
     transactionId: number,
     name: string,
     isBuy: boolean,
   ) {
-    let normalAmount = finalAmountBuy * finalPriceBuy;
+    let normalAmount = amount;
     if (isBuy) {
       normalAmount *= -1;
     }
@@ -267,20 +267,32 @@ export class ArbitrageService {
 
       // Update master vault capital
       // Decrease initial vault
+      const firstOperationAmount =
+        firstOperation.finalAmountBuy * firstOperation.finalPriceBuy;
       await this.updateVault(
-        firstOperation.finalAmountBuy,
-        firstOperation.finalPriceBuy,
+        firstOperationAmount,
         firstOperation.transactionId,
         request.startStable,
         true,
       );
 
       // Increase final vault
+      const lastOperationAmount =
+        lastOperation.finalAmountBuy * lastOperation.finalPriceBuy;
       await this.updateVault(
-        lastOperation.finalAmountBuy,
-        lastOperation.finalPriceBuy,
+        lastOperationAmount,
         lastOperation.transactionId,
         request.finalAsset,
+        false,
+      );
+
+      // Increase initial vault after rebuy
+      const rebuyAmount = request.rebuyAmount;
+
+      await this.updateVault(
+        rebuyAmount,
+        lastOperation.transactionId,
+        request.startStable,
         false,
       );
     }
