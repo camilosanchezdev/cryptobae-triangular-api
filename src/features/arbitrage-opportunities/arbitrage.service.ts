@@ -177,7 +177,7 @@ export class ArbitrageService {
     if (this.isAutoRebuyEnabled) {
       const rebuyUSDTOrder = await this.rebuyUSDT(
         body.finalAsset,
-        Number(thirdOrder.executedQty),
+        Number(thirdOrder.cummulativeQuoteQty),
       );
       rebuyAmount = Number(rebuyUSDTOrder.cummulativeQuoteQty);
       console.log(
