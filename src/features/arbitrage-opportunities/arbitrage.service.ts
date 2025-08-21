@@ -116,7 +116,7 @@ export class ArbitrageService {
       secondOrder,
     );
     haveAsset = asset2;
-    amount = Number(secondOrder.cummulativeQuoteQty); // This is the BTC you received from selling DOGE
+    amount = Number(secondOrder.executedQty); // This is the BTC you received from selling DOGE
 
     // Step 3
     const { side: side3, quantity: qty3 } = getOrderTypeAndQuantity(
