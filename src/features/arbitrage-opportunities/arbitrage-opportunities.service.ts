@@ -265,7 +265,6 @@ export class ArbitrageOpportunitiesService {
       this.logger.log(
         `Min profit percentage: ${this.minProfitPercentage}, Actual profit percentage: ${profitPercent}`,
       );
-      this.logger.log(`Found profitable opportunity: ${JSON.stringify(path)}`);
     }
     if (isProfitable && profitPercent >= this.minProfitPercentage) {
       const newOpportunity: ArbitrageOpportunityRequest = {
@@ -356,11 +355,10 @@ export class ArbitrageOpportunitiesService {
         thirdTradingPairId: opp.thirdTradingPairId,
       };
       newOpportunities.push(op);
-
-      await this.arbitrageService.saveOrders(binanceOrderResponses);
-
-      await this.createArbitrageOpportunities(newOpportunities);
     }
+    await this.arbitrageService.saveOrders(binanceOrderResponses);
+
+    await this.createArbitrageOpportunities(newOpportunities);
   }
   checkHighestProfitOpportunityByStartStable(
     opportunities: ArbitrageOpportunityRequest[],
