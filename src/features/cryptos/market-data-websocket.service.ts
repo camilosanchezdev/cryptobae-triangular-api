@@ -14,7 +14,10 @@ export class MarketDataWebsocketService
 {
   private readonly logger = new Logger(MarketDataWebsocketService.name);
   private marketDataSaveInterval: NodeJS.Timeout | null = null;
-  private readonly marketDataSaveIntervalMs = 1 * 60 * 1000; // 5 minutes for arbitrage market data
+  // 1 * 60 * 1000 = 1 minute
+  private readonly marketDataSaveIntervalMs = Number(
+    process.env.CRYPTO_WEBSOCKET_TIME,
+  );
 
   constructor(
     private readonly sharedMarketDataService: SharedMarketDataService,
@@ -52,8 +55,6 @@ export class MarketDataWebsocketService
     this.logger.log('Started periodic price saving every 5 minutes');
   }
   private async saveAllCurrentPrices(): Promise<void> {
-    console.log('Saving all current prices to database...');
-
     try {
       const prices = Array.from(
         this.sharedMarketDataService.getCurrentPrices().values(),
