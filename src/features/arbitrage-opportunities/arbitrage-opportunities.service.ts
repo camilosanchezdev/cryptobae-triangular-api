@@ -261,7 +261,12 @@ export class ArbitrageOpportunitiesService {
         path.coin2,
         path.endStable,
       );
-
+    if (profitPercent > 0) {
+      this.logger.log(
+        `Min profit percentage: ${this.minProfitPercentage}, Actual profit percentage: ${profitPercent}`,
+      );
+      this.logger.log(`Found profitable opportunity: ${JSON.stringify(path)}`);
+    }
     if (isProfitable && profitPercent >= this.minProfitPercentage) {
       const newOpportunity: ArbitrageOpportunityRequest = {
         profitPercentage: profitPercent,
